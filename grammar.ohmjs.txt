@@ -1,0 +1,300 @@
+NARDAT {
+	Program = ws* Stmt* ws*
+	Stmt = (Decl | Expr<w0>) ws*
+
+	Bar = ws* "|"
+	Comma = ws* "," ws*
+	FieldOp = symbol | eq | arrow1
+
+	Block = Expr<w0>
+
+	Decl
+		= TypeAliasDecl
+		| DataDecl
+		| FuncDecl
+		| ValueDecl
+		| ValueTypeDecl
+		| EnumDecl
+		| ImportDecl
+		
+	TypeHeadDecl = symbol typeVar*
+	TypeAliasDecl = type TypeHeadDecl ws* eq Type
+	DataDecl = "data" TypeHeadDecl ws* eq TypeInstanceList
+
+	MacroDecorator = "@macro"
+	OperatorDecoratorArg = symbol | intLiteral
+	OperatorDecoratorArgList = NonemptyListOf<OperatorDecoratorArg, Comma>
+	OperatorDecorator = "@operator" "(" OperatorDecoratorArgList ")"
+	PriorityDecorator = "@priority" "(" intLiteral ")"
+	AsyncDecorator = "@async"
+	Decorator = ws* (MacroDecorator | OperatorDecorator | PriorityDecorator | AsyncDecorator) ws*
+	DecoratorsList = Decorator*
+	DefReturnType = arrow1 Type
+	FuncDecl = DecoratorsList fn FuncName "(" ArgumentList? ")" DefReturnType? ":" ws* Block
+
+	ValueDecl = symbol eq Expr<w0>
+	ValueTypeDecl = (symbol | stringLiteral) ":" Type
+
+	EnumDecl = enum symbol ws* eq TypeInstanceList
+	ImportDecl = "import" modulePathLiteral
+
+	TypeInstance = typename NonFunctionType*
+	TypeInstanceList = NonemptyListOf<TypeInstance, Bar>
+
+	NonFunctionType
+		= TypeInstance
+		| TypeVariable
+		| TupleType
+		| RecordType
+
+	Type
+		= FunctionType
+		| NonFunctionType
+
+	TypeConstraint = "[" Type "]"
+	TypeVariable = typeVar TypeConstraint?
+
+	TypeList = NonemptyListOf<Type, Comma>
+	TupleType = "(" TypeList? ")"
+
+	Argument = symbol (":" Type)? (":=" SAtom)?
+	ArgumentList = NonemptyListOf<Argument, Comma>
+	RecordType = curly_open ArgumentList? curly_close
+
+	FunctionTypeList = NonFunctionType (ws* arrow1 NonFunctionType)+
+	FunctionType = FunctionTypeList RecordExpr?
+
+	UntypedTarget
+		= Target arrow1 Target -- rule
+		| symbol Target? -- symbol
+		| TupleExpression -- tuple
+		| ListExpression -- list
+		| RecordExpr -- record
+	Target = UntypedTarget (doublecolon Type)?
+	TargetList = NonemptyListOf<Target, Comma>
+
+	LetBind = Target eq Term<w0> ws*
+	LetBindList = NonemptyListOf<LetBind, comma>
+	LetExpr = let ws* LetBindList ":" ws* Block
+
+	SymbolList = NonemptyListOf<symbol, Comma>
+	LiveExpr = live SymbolList ":" ws* Expr<w0>
+
+	IfExpr = if ws* Term<w0> ":" ws* Block (ws* else ":" ws* Block)?
+	ForExpr = for Target in Term<w0> ":" ws* Block
+	ForCond = (every | some) Target in Term<w0> ":" ws* Block
+	BatchExpr = batch Term<w0> ":" ws* Block
+					
+	FieldExpr = symbol TupleExpression? FieldOp Expr<w0>
+	FieldExprList = FieldExpr (ws* comma FieldExpr)*
+	RecordExpression = FieldExprList
+	RecordExtensionExpr = Expr<w0> with FieldExprList
+	RecordExpr = curly_open (RecordExpression | RecordExtensionExpr)? curly_close
+	ExprList = Expr<w0> (ws* comma Expr<w0>)*
+	ListExpression = "[" nl* ExprList? nl* "]"
+	MultiLineExprList = Expr<ws> (ws* comma Expr<ws>)*
+	TupleExpression = "(" ws* MultiLineExprList? ws* comma? ws* ")"
+	LambdaExpr = lambda TargetList ":" ws* Expr<w0>
+	InlineLambdaExpr = "(" Expr<w0> ")" "&"
+	BindExpr = with SAtom ":" ws* Expr<w0>
+	QuoteExpr = quote ":" ws* Expr<w0> ws* kw_end
+	UnquoteExpr = unquote ":" ws* Expr<w0>
+	BackwardPipeExpr = backward_pipe ExprList
+
+	TypeExpr = "@" TypeInstance
+
+	WhereClause = where ws* (TemplateExpr | STerm) ws*
+	IfClause = if ws* (TemplateExpr | STerm) ws*
+
+	PatternExpr = LeftPatternExpr ws* ":" ws* Term<w0>
+	LeftPatternExpr = STerm IfClause?
+
+	MatchExpr = match ws* STerm ":" ws* CaseExprList
+	CaseExprList = (CaseExpr | ElseCaseExpr)+
+	CaseExpr = ws* case ws* (PatternExpr | SAtom)
+	ElseCaseExpr = ws* else ":" ws* Term<w0>
+
+	RewriteExpr = rewrite ws* (STerm | TemplateExpr) ":" ws* (templateName | CaseExprList)
+
+	MatchesPatternExpr = Expr<w0> ws* matches ws* LeftPatternExpr
+	ContainsPatternExpr = Expr<w0> ws* contains_pattern ws* LeftPatternExpr
+			
+	Expr<ws>
+		= PatternExpr
+		| MatchesPatternExpr
+		| ContainsPatternExpr
+		| Term<ws>
+		
+	Term<ws> = Atom<ws>+
+	Atom<ws> = ws* XAtom
+	XAtom
+		= SAtom
+		| IfExpr
+		| from
+		| where
+		| order
+
+	STerm = SAtom+
+	SAtom
+		= floatLiteral
+		| intLiteral
+		| stringLiteral
+		| stringLiteral2
+		| charLiteral
+		| in
+		| NotIn
+		| FieldOp
+		| selection
+		| QuoteExpr
+		| UnquoteExpr
+		| BackwardPipeExpr
+		| LiveExpr
+		| LetExpr
+		| ForCond
+		| ForExpr
+		| BatchExpr
+		| BindExpr
+		| LambdaExpr
+		| InlineLambdaExpr
+		| MatchExpr
+		| RewriteExpr
+		| AnnotateExpr
+		| TupleExpression
+		| ListExpression
+		| RecordExpr
+		| TypeExpr
+		| JoinExpr
+		| SelectExpr
+		| BuiltIn
+		| templateName
+
+	NotIn = "not" in
+			
+	FuncName = symbol | stringLiteral | from | where | order
+
+	JoinOn = on "(" symbol comma symbol ")"
+	JoinName = as symbol
+	JoinExpr
+		= join Term<w0> JoinName? JoinOn? -- default
+
+	SelectExpr = select ws* SelectColumnList ws* from ws* Term<w0>
+	SelectColumnList = SelectColumn (ws* comma SelectColumn)*
+	SelectColumn = (STerm | TemplateExpr) (as symbol)?
+
+	FindFromClause = from ws* (TemplateExpr | STerm) ws*
+	AnnotateExpr = annotate (templateName | symbol | DeconstructRuleList) ws* FindFromClause WhereClause?
+	DeconstructRuleList = DeconstructRule (ws* comma DeconstructRule)*
+	DeconstructRule = ws* LeftPatternExpr ws* (as SAtom)?
+
+	intLiteral = signedDecimalIntegerLiteral
+	floatLiteral = "?+" floatLiteralX -- positive
+		| "-" floatLiteralX -- negative
+		| floatLiteralX --noSign
+	floatLiteralX = floatLiteral1 | floatLiteral2 | floatLiteral3
+	floatLiteral1 = decimalIntegerLiteral ~ddot ~triple_dot "." decimalDigit* exponentPart?
+	floatLiteral2 = "." decimalDigit+ exponentPart?
+	floatLiteral3 = decimalIntegerLiteral exponentPart
+	signedDecimalIntegerLiteral = "?+" decimalIntegerLiteral -- positive
+		| "-" decimalIntegerLiteral -- negative
+		| decimalIntegerLiteral --noSign
+	decimalIntegerLiteral = decimalIntegerNonZeroLiteral | "0"
+	decimalIntegerNonZeroLiteral = nonZeroDigit decimalDigit*
+	decimalDigit = "0".."9"
+	nonZeroDigit = "1".."9"
+	exponentPart = exponentIndicator signedInteger
+	exponentIndicator = "e" | "E"
+	signedInteger = "?+" decimalDigit* -- positive
+		| "-" decimalDigit* -- negative
+		|     decimalDigit+ -- noSign
+
+	stringDelimiter = "\""
+	stringLiteral = stringDelimiter (~stringDelimiter any)* stringDelimiter
+	stringDelimiter2 = "${STRING_DELIMITER_2}"
+	stringLiteral2 = stringDelimiter2 (~stringDelimiter2 any)* stringDelimiter2
+			
+	charDelimiter = "\'"
+	charLiteral = charDelimiter (~charDelimiter any)* charDelimiter
+
+	modulePathLiteral = (alnum | "." | "-" | "_")+
+
+	basename2 = #(("?" | "_" | letter | "0".."9" | "-" | "$" | "!")+)
+	basename = #(("?" | "_" | "#" | letter) basename2?)
+	name = ~keyword basename
+	arsym = ~keyword #(("<"|">"|"!"|"="|"+"|"-"|"*"|"/"|"^"|"%"|"?"|"|")+)
+	symbol = ~keyword name | triple_dot | "..<" | ddot | arsym | ";"
+	selection = #("." alnum+)
+
+	TemplateExpr = templateName TupleExpression?
+	templateName = #("$" ("0".."9" | ("a".."z") | ("A".."Z"))+)
+
+	typename = ~keyword #(("A".."Z") ("0".."9" | letter | "_")*)
+	typeVar = ~keyword #(("a".."z") ("0".."9" | letter | "_")*)
+
+	arrow1 = "->" ~symbol
+	arrow2 = "=>" ~symbol
+	eq = ~"==" ~"=>" "="
+	ddash = "--"
+	triple_dot = ddot "."
+	ddot = ".."
+
+	matches = "matches" ~symbol
+	contains_pattern = "has?" ~symbol
+
+	type = "type" ~basename2
+	match = ~matches "match" ~basename2
+	rewrite = "rewrite" ~basename2
+	let = "let" ~basename2
+	with = "with" ~basename2
+	if = ws* "if" ~basename2
+	then = "then" ~basename2
+	else = "else" ~basename2
+	enum = "enum" ~basename2
+	case = "case" ~basename2
+	as = "as" ~basename2
+	join = "join" ~basename2
+	on = "on" ~basename2
+	span = "span" ~basename2
+	from = ws* "from" ~basename2
+	where = ws* "where" ~basename2
+	order = ws* "order" ~basename2
+	quote = "quote" ~basename2
+	unquote = "unquote" ~basename2
+	kw_end = "end" ~basename2
+	every = "every" ~basename2
+	some = "some" ~basename2
+	in = "in" ~basename2
+	backward_pipe = "<|" ~basename2
+	select = "select" ~basename2
+	annotate = "annotate" ~basename2
+	live = "live" ~basename2
+
+	fn = "fn" ~basename2
+	for = "for" ~basename2
+	batch = "batch" ~basename2
+	macro = "macro" ~basename2
+	lambda = "fn" ~basename2
+	doublecolon = "::" ~basename2
+
+	keyword = eq | type | with | matches | match | rewrite | annotate
+		| arrow1 | arrow2 | if | then | else | enum | ddash | let
+		| ":" | case | built_in | as | join | every | some | in | select
+		| on | contains_pattern | ddot | triple_dot | span | fn | for | batch
+		| macro | lambda | from | where | order | quote | unquote | kw_end
+		| doublecolon | backward_pipe | live
+
+	comma = ws* "," ws*
+	curly_open = "{" ws*
+	curly_close = ws* "}"
+
+	built_in = #("<" (letter | "0".."9" | "-" | space | ":")+ ">")
+	BuiltIn = built_in
+
+	comment1 = "/*" (~"*/" any)* "*/"
+	comment2 = "//" (~nl any)*
+	comment = comment1 | comment2
+	nl = "\r\n" | "\r" | "\n"
+	ws = nl | space
+	w0 = " " | "\t"
+	spaces := (~nl space)*
+	space += comment	
+}

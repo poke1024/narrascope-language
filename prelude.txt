@@ -1,0 +1,498 @@
+data Maybe a
+	= Just a
+	| Nothing
+
+data Expr
+	= Identifier String
+	| IntLiteral Int
+	| FloatLiteral Float
+	| StringLiteral String
+	| Term List Expr
+	| List List Expr
+	| Tuple List Expr
+	| Record List Expr
+	| Field Expr Expr Expr
+	| Call Expr (List Expr)
+	| Match Expr (List Expr)
+	| Pattern Expr Expr (Maybe Expr)
+	| Lambda (List String) Expr
+	| With Expr Expr
+	| Slot Int
+	| IllegalExpr
+	
+timeit : (a -> b) -> a -> {time: Float, result: b}
+timeit = <timeit>
+	
+data Tuple0 = Tuple0
+data Tuple1 a = Tuple1 a
+data Tuple2 a b = Tuple2 a b
+data Tuple3 a b c = Tuple3 a b c
+
+@operator(infix, left, 7)
+fn ??(lhs, rhs):
+	match lhs:
+		case Just x:
+			x
+		case Nothing:
+			rhs
+	
+data Rule a b = Rule a b
+fn _link(x, y): Rule x y
+
+data Unevaluated = Unevaluated String
+
+toList : String -> List String
+toList = <stringToList>	
+	
+toList : Maybe a -> List a
+toList = <maybeToList>
+
+apply2 : (a -> a -> c) -> List a -> c
+apply2 = <apply2>
+	
+counts : List a [Comparable] -> List Rule a Int
+counts = <counts>
+	
+repeat : Int -> a -> List a
+repeat = <repeat>
+
+range : a [Comparable] -> List a
+range = <range1>
+
+range : a [Comparable] -> a -> List a
+range = <range2>
+
+crange : a [Comparable] -> a -> List a
+crange = <crange>
+
+@operator(infix, left, 4) fn ..<(a, b): range(a, b)
+@operator(infix, left, 4) fn ...(a, b): crange(a, b)
+
+| : a -> List a -> List a {
+	affix = "infix",
+	precedence = 8
+}
+| = <cons>
+
+map : (a -> b) -> List a -> List b
+map = <map>
+
+indexedMap : (Int -> a -> b) -> List a -> List b
+indexedMap = <indexedMap>
+
+fold : (a -> b -> b) -> b -> List a -> b
+fold = <fold>
+
+filter : (a -> Bool) -> List a -> List a
+filter = <filter>	
+
+reverse : List a -> List a
+reverse = <reverse>
+
+zip : List a -> List b -> List (a, b)
+zip = <zip>
+
+fn rolling(xs): // rolling window, size 2
+	zip(xs, drop(1, xs))
+
+fn keys(xs: List Rule a b) -> List b:
+	for Rule k v in xs: k
+
+fn values(xs: List Rule a b) -> List b:
+	for Rule k v in xs: v
+
+div : Int -> Int -> Maybe Int {
+	affix = "infix",
+	precedence = 7
+}
+div = <div>
+
+round : Float -> Int
+round = <round>
+ceiling : Float -> Int
+ceiling = <ceiling>
+floor : Float -> Int
+floor = <floor>
+truncate : Float -> Int
+truncate = <truncate>
+toFloat : Int -> Float
+toFloat = <toFloat>
+toInt : String -> Maybe Int
+toInt = <toInt>
+
+len : List a -> Int
+len = <len-list>
+
+len : Set a -> Int
+len = <len-set>
+
+len : String -> Int
+len = <len-str>
+	
+__in__ : a -> Set a -> Bool {
+	affix = "infix",
+	precedence = 4
+}
+__in__ = <hash-set-member>
+
+__in__ : a -> List a -> Bool {
+	affix = "infix",
+	precedence = 4
+}
+__in__ = <member>
+
+@operator(infix, left, 4)		
+fn __in__(x: a, xs: List List a):
+	x __in__ flatten(xs)
+
+not-in : a -> b [Iterable a] -> Bool {
+	affix = "infix",
+	precedence = 4
+}
+not-in = <not-member>
+
+_all : (a -> Bool) -> List a -> Bool
+_all = <all>
+
+_any : (a -> Bool) -> List a -> Bool
+_any = <any>
+
+flatten : List a -> List a
+flatten = <flatten0>
+flatten : List List a -> List a
+flatten = <flatten1>
+
+max : List a [Comparable] -> Maybe a
+max = <maximum>
+
+max : List List a [Comparable] -> Maybe a
+fn max(xs): max(flatten(xs))
+
+maxBy : List a -> (a -> b [Comparable]) -> Maybe a
+maxBy = <maximumBy>
+
+max : a [Comparable] -> a -> a
+max = <maximum2>
+
+min : List a [Comparable] -> Maybe a
+min = <minimum>
+
+min : a [Comparable] -> a -> a
+min = <minimum2>
+
+sum : List a [Number] -> a [Number]
+sum = <sum>
+
+product : List a [Number] -> a [Number]
+product = <product>
+
+avg : List a [Number] -> Maybe a [Number]
+avg = <avg>
+
+std : List a [Number] -> Maybe a [Number]
+std = <std>
+
+median : List a [Number] -> Maybe a [Number]
+median = <median>
+
+percentile : List a [Number] -> Float -> Maybe a [Number]
+percentile = <percentile>
+
+sort : List a [Comparable] -> List a
+sort = <sort>
+
+sortBy : (a -> b [Comparable]) -> List a -> List a
+sortBy = <sortBy>
+	
+group : List a -> (a -> b [Comparable]) -> List (Rule b (List a))
+group = <group>
+
+grouped : List a -> b -> List a {
+	affix = "infix",
+	precedence = 5
+}
+@macro fn grouped(x, y): group(x, y)
+
+gather : List a -> (a -> b [Comparable]) -> List (List a)
+gather = <gather>
+
+gathered : List a -> b -> List a {
+	affix = "infix",
+	precedence = 5
+}
+@macro fn gathered(x, y): gather(x, y)
+
+count : (a -> Bool) -> List a -> Int
+fn count(f, xs): sum(for x in xs: if f(x): 1 else: 0)
+
+isEmpty : List a -> Bool
+isEmpty = <isEmpty>
+
+head : List a -> Maybe a
+head = <head>
+
+tail : List a -> Maybe (List a)
+tail = <tail>
+
+last : List a -> Maybe a
+last = <last>
+
+fn most(xs): take(len(xs) - 1, xs)
+
+take : Int -> List a -> List a
+take = <take>
+
+drop : Int -> List a -> List a
+drop = <drop>
+
+mapMaybe : (a -> Maybe b) -> List a -> List b
+mapMaybe = <mapMaybe>
+
+catMaybes : List Maybe a -> List a
+catMaybes = <catMaybes>
+
+append : List a -> List a -> List a
+append = <append>
+
+concat : List (List a) -> List a
+concat = <concat>
+	
+unique : List a [Comparable] -> List a
+unique = <unique>
+	
+set : List a [Comparable] -> Set a  // FIXME b [Iterable a]
+set = <hash-set>
+
+hash-set-eq : Set a -> Set a -> Bool
+hash-set-eq = <hash-set-eq>
+
+intersection : Set a -> Set a -> Set a
+intersection = <intersection-hash-set>
+
+intersection : List a [Comparable] -> List a -> List a
+intersection = <intersection-list>
+
+difference : Set a -> Set a -> Set a
+difference = <difference-hash-set>
+
+difference : List a [Comparable] -> List a -> List a
+difference = <difference-list>
+
+union : Set a -> Set a -> Set a
+union = <union-hash-set>
+
+union : List a [Comparable] -> List a -> List a
+union = <union-list>
+
+abs : a [Number] -> a [Number]
+abs = <abs>
+sqrt : a [Number] -> Float
+sqrt = <sqrt>
+
+sin : a [Number] -> a [Number]
+sin = <sin>
+cos : a [Number] -> a [Number]
+cos = <cos>
+
+pi = 3.141592653589793
+
+isEven : Int -> Bool
+isEven = <isEven>
+isOdd : Int -> Bool
+isOdd = <isOdd>
+
+@operator(infix, left, 0)
+@macro fn from(f, xs): map(fn x: with x: f, xs)
+
+@operator(infix, left, 1)
+@macro fn where(xs, f): filter(fn x: with x: f, xs)
+
+@operator(infix, left, 1)
+@macro fn order(x, y): sortBy(y, x)
+
+@operator(prefix, 9)
+@macro fn by(x): fn y: with y: x
+
+@macro
+fn from_agg(x, xs): (fn __from_xs: x)(xs)
+
+limit : List a -> Int -> List a {
+	affix = "infix",
+	precedence = 1
+}
+fn limit(xs, n): take n xs
+			
+fn select2(f, xs):
+	map(fn x: x -> f(x), xs)
+
+like : String -> String -> Bool {
+	affix = "infix",
+	precedence = 4
+}
+like = <like>
+
+ilike : String -> String -> Bool {
+	affix = "infix",
+	precedence = 4
+}
+ilike = <ilike>
+
+trim : String -> String
+trim = <trim>
+ord : String -> Int
+ord = <ord>
+chr : Int -> String
+chr = <chr>
+
+str : Type a -> String
+str = <typeToString>
+str : Bool -> String
+str = <boolToString>
+str : Int -> String
+str = <intToString>
+str : Float -> String
+str = <floatToString>
+
+minBound : Type a -> a
+minBound = <minBound>
+maxBound : Type a -> a
+maxBound = <maxBound>
+str2 : a -> String
+str2 = <str2 :dynamic>
+
+live_fn : a -> String
+live_fn = <liveFn>
+
+@macro
+fn has-pattern(x, y): _any((fn z: (z matches y)), x)
+
+data DataFrame = DataFrame String
+
+toDataFrame : a -> DataFrame
+toDataFrame = <toDataFrame>
+	
+type Interval a = {left: a, right: a}
+
+toIntervalTree : List Interval a [Comparable] -> List b -> IntervalTree a b
+toIntervalTree = <toIntervalTree>
+
+data Union a b = Union a b
+fn make_union(x, y): Union x y
+
+query : IntervalTree a b -> Interval a -> List b
+query = <query-interval-tree>
+
+load : String -> Type a -> a
+load = <load :async :meta>
+
+type TypeNode = {source: Int, target: {label: String}}
+type TypeLink = {source: Int, target: Int}
+type TypeNetwork = {links: List TypeLink, nodes: List TypeNode}
+makeTypeNetwork : Type a -> TypeNetwork
+makeTypeNetwork = <makeTypeNetwork :meta>
+
+parseProgram : String -> {source: String, parsed: String}
+parseProgram = <parseProgram>
+	
+data Color
+	= RGBColor {r: Float, g: Float, b: Float}
+	| HSLColor {h: Float, s: Float, l: Float}
+
+black = RGBColor {r=0., g=0., b=0.}
+red = RGBColor {r=1., g=0., b=0.}
+green = RGBColor {r=0., g=1., b=0.}
+blue = RGBColor {r=0., g=0., b=1.}
+
+fn rgb(r: Float, g: Float, b: Float): RGBColor {r=r, g=g, b=b}
+fn hsl(h: Float, s: Float, l: Float): HSLColor {h=h, s=s, l=l}
+
+data Graphics
+	= Circle {x: Float := 0., y: Float := 0., r: Float := 1., fill: Color := black}
+	| Disk {x: Float, y: Float, r: Float}
+	
+parse: String -> Expr
+parse = <parse>
+eval : Expr -> Type a -> a
+eval = <eval :async>
+eval : String -> Type a -> a
+eval = <evalStr :async>
+
+read : String -> String
+read = <loadFile :async :meta>
+
+del_maybe : List Maybe a -> List a
+del_maybe = <delMaybe>
+
+data DurationUnit
+	= Milliseconds
+	| Seconds
+	| Minutes
+	
+data Duration = Duration Float DurationUnit
+
+data Table a = Table a
+
+data Graph a = Graph a
+
+data Plot a = Plot a
+
+@operator(infix, left, 4)
+@macro fn has(pattern, f):
+	fn x: match x: case pattern: f
+
+fn for-all(arr, f):
+	_all(f, arr)
+
+fn for-some(arr, f):
+	_any(f, arr)
+	
+fn _every(f, x): _all(f, x)
+fn _some(f, x): _any(f, x)
+
+@macro fn __for__(x, xs, body): map(fn x: body, xs)
+@macro fn __forp__(x, xs, body): del_maybe(map(fn __y: match __y: case x: Just body else: Nothing, xs))
+
+@macro fn __qun__(q, x, xs, body): q(fn x: body, xs)
+@macro fn __qunp__(q, x, xs, body, d): q(fn __y: match __y: case x: body else: d, xs)
+
+@macro fn __batch__(xs, f): for x in xs: x -> with x: f
+
+@macro fn __lambdap__(p, body): fn __x: match __x: case p: body
+
+__narrascope_load__: String -> ()
+__narrascope_load__ = <narrascopeLoad>
+
+explorer2 : a -> b -> Int -> Int -> String
+explorer2 = <narrascopeExplorer2 :async>
+
+toDataFrame : a -> DataFrame
+toDataFrame = <toDataFrame>
+
+type Span = {
+	startTime: Float,
+	endTime: Float
+}
+
+bounds : Span -> Span
+bounds = <boundsSpan1>
+bounds : List Span -> Span
+bounds = <boundsSpan2>
+
+data Alphabet
+	= DiscreteAlphabet List String
+	| ContinuousAlphabet Float Float
+
+type Sequences = {
+	alphabet: Alphabet,
+	sequences: List {
+		key: String,
+		values: List Int,
+		spans: List Span
+	}
+}
+
+to_sequences : List Rule String List a -> Sequences
+to_sequences = <toSequences :dynamic>
+
+cosine_sim : List a [Comparable] -> List a -> a
+cosine_sim = <cosineSim>
